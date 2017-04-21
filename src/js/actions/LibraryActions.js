@@ -6,11 +6,12 @@ import AppActions    from './AppActions';
 import app   from '../lib/app';
 import utils from '../utils/utils';
 
-import fs       from 'fs';
-import path     from 'path';
-import globby   from 'globby';
-import Promise  from 'bluebird';
-import queue    from 'queue';
+import fs           from 'fs';
+import { exec }    from 'child_process';
+import path         from 'path';
+import globby       from 'globby';
+import Promise      from 'bluebird';
+import queue        from 'queue';
 
 const dialog = electron.remote.dialog;
 const statAsync = Promise.promisify(fs.stat);
@@ -133,22 +134,26 @@ const add = (pathsToScan) => {
 
         // Add files to be processed to the scan object
         scan.total += supportedFiles.length;
-
-        supportedFiles.forEach((filePath) => {
-            scanQueue.push((callback) => {
-                return app.models.Track.findAsync({ path: filePath }).then((docs) => {
-                    if (docs.length === 0) {
-                        return utils.getMetadata(filePath);
-                    }
-                    return null;
-                }).then((track) => {
-                    // If null, that means a track with the same absolute path already exists in the database
-                    if(track === null) return;
-                    // else, insert the new document in the database
-                    return app.models.Track.insertAsync(track);
-                }).then(() => {
-                    scan.processed++;
-                    callback();
+        // recommendation machine learning
+        exec(`python ./src/py/scripts/recommendation.py -l '${JSON.stringify(supportedFiles)}'`, (err, std) => {
+            const clustered = JSON.parse(std);
+            supportedFiles.forEach((filePath) => {
+                scanQueue.push((callback) => {
+                    return app.models.Track.findAsync({ path: filePath }).then((docs) => {
+                        if (docs.length === 0) {
+                            const currCluster = clustered.filter((el) => el.index === filePath.split('/').pop()).pop().cluster;
+                            return utils.getMetadata(filePath, currCluster);
+                        }
+                        return null;
+                    }).then((track) => {
+                        // If null, that means a track with the same absolute path already exists in the database
+                        if(track === null) return;
+                        // else, insert the new document in the database
+                        return app.models.Track.insertAsync(track);
+                    }).then(() => {
+                        scan.processed++;
+                        callback();
+                    });
                 });
             });
         });
@@ -238,6 +243,17 @@ const incrementPlayCount = async (source) => {
     }
 };
 
+const recommend = async () => {
+    const tracks = store.getState().tracks.library.all;
+    const currentTrack = tracks[store.getState().queueCursor];
+    const trackIds = tracks
+                        .filter((msc) => msc.cluster === currentTrack.cluster)
+                        .map((el) => el._id);
+    console.log(trackIds);
+    AppActions.queue.clear();
+    AppActions.queue.add(trackIds);
+};
+
 
 export default {
     add,
@@ -248,4 +264,5 @@ export default {
     removeFromLibrary,
     reset,
     incrementPlayCount,
+    recommend,
 };
