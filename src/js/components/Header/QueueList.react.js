@@ -65,6 +65,9 @@ export default class QueueList extends Component {
                         <Button bsSize={ 'xsmall' } bsStyle={ 'default' } className='empty-button' onClick={ AppActions.queue.clear }>
                             clear queue
                         </Button>
+                        <Button bsSize={ 'xsmall' } bsStyle={ 'default' } className='empty-button' onClick={ AppActions.library.recommend }>
+                            automatic Playlist
+                        </Button>
                     </ButtonGroup>
                 </div>
                 <div className={ queueBodyClasses }>

@@ -79,6 +79,7 @@ const Track = new linvodb('track', {
         of: Number,
     },
     duration: Number,
+    cluster: null,
     genre: [String],
     loweredMetas : {
         artist      : [String],

@@ -179,6 +179,7 @@ const getDefaultMetadata = () => {
             of: 0,
         },
         duration     : 0,
+        cluster: null,
         genre        : [],
         loweredMetas : {},
         path         : '',
@@ -267,11 +268,14 @@ const getMusicMetadata = async (track) => {
  * @return object
  *
  */
-const getMetadata = async (track) => {
+const getMetadata = async (track, cluster) => {
     // metadata should have the same shape as getDefaultMetadata() object
     const wavFile = path.extname(track).toLowerCase() === '.wav';
     const metadata = wavFile ? await getWavMetadata(track) : await getMusicMetadata(track);
-    return metadata;
+    return {
+        ...metadata,
+        cluster,
+    };
 };
 
 const getAudioDurationAsync = (path) => {
